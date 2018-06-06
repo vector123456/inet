@@ -108,6 +108,7 @@ const Protocol Protocol::sctp("sctp", "SCTP", Protocol::TransportLayer);
 const Protocol Protocol::stp("stp", "STP");
 const Protocol Protocol::tcp("tcp", "TCP", Protocol::TransportLayer);
 const Protocol Protocol::udp("udp", "UDP", Protocol::TransportLayer);
+const Protocol Protocol::udpLite("udpLite", "UDPLite", Protocol::TransportLayer);
 const Protocol Protocol::xmac("xmac", "X-MAC");
 const Protocol Protocol::xtp("xtp", "XTP");
 

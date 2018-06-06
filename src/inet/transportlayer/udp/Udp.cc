@@ -24,6 +24,7 @@
 #include "inet/applications/common/SocketTag_m.h"
 #include "inet/common/IProtocolRegistrationListener.h"
 #include "inet/common/packet/Packet.h"
+#include "inet/common/packet/chunk/EmptyChunk.h"
 #include "inet/common/ProtocolTag_m.h"
 #include "inet/common/LayeredProtocolBase.h"
 #include "inet/common/ModuleAccess.h"
@@ -62,6 +63,10 @@
 namespace inet {
 
 Define_Module(Udp);
+
+#ifdef UDPLite
+//TODO how to get value for checksum coverage field?
+#endif
 
 bool Udp::MulticastMembership::isSourceAllowed(L3Address sourceAddr)
 {
@@ -170,8 +175,13 @@ void Udp::initialize(int stage)
         NodeStatus *nodeStatus = dynamic_cast<NodeStatus *>(findContainingNode(this)->getSubmodule("status"));
         isOperational = (!nodeStatus) || nodeStatus->getState() == NodeStatus::UP;
 
+#ifdef UDPLite
+        registerService(Protocol::udpLite, gate("appIn"), gate("ipIn"));
+        registerProtocol(Protocol::udpLite, gate("ipOut"), gate("appOut"));
+#else
         registerService(Protocol::udp, gate("appIn"), gate("ipIn"));
         registerProtocol(Protocol::udp, gate("ipOut"), gate("appOut"));
+#endif
     }
 }
 
@@ -382,7 +392,11 @@ void Udp::processPacketFromApp(Packet *packet)
     // set source and destination port
     udpHeader->setSourcePort(srcPort);
     udpHeader->setDestinationPort(destPort);
+#ifdef UDPLite
+    udpHeader->setTotalLengthField( ??? );      //FIXME
+#else
     udpHeader->setTotalLengthField(udpHeader->getChunkLength() + packet->getTotalLength());
+#endif
     insertCrc(l3Protocol, srcAddr, destAddr, udpHeader, packet);    // crcMode == CRC_COMPUTED is done in an INetfilter hook
     insertTransportProtocolHeader(packet, Protocol::udp, udpHeader);
     packet->addTagIfAbsent<DispatchProtocolReq>()->setProtocol(l3Protocol);
@@ -413,6 +427,10 @@ void Udp::processUDPPacket(Packet *udpPacket)
     auto srcAddr = l3AddressInd->getSrcAddress();
     auto destAddr = l3AddressInd->getDestAddress();
     auto totalLength = B(udpHeader->getTotalLengthField());
+#ifdef UDPLite
+    if (totalLength == b(0))
+        totalLength = udpHeader->getChunkLength() + udpPacket->getDataLength();         // jumbo frame, see RFC 3828, 3.5.
+#endif
     auto hasIncorrectLength = totalLength < udpHeader->getChunkLength() || totalLength > udpHeader->getChunkLength() + udpPacket->getDataLength();
     auto networkProtocol = udpPacket->getTag<NetworkProtocolInd>()->getProtocol();
 
@@ -425,11 +443,14 @@ void Udp::processUDPPacket(Packet *udpPacket)
         delete udpPacket;
         return;
     }
-
+#if 0
+#ifndef UDPLite
     // remove lower layer paddings:
     if (totalLength < udpPacket->getDataLength()) {
         udpPacket->setBackOffset(udpHeaderPopPosition + totalLength);
     }
+#endif
+#endif
 
     bool isMulticast = destAddr.isMulticast();
     bool isBroadcast = destAddr.isBroadcast();
@@ -1286,7 +1307,9 @@ void Udp::insertCrc(const Protocol *networkProtocol, const L3Address& srcAddress
             // if the CRC mode is computed, then compute the CRC and set it
             // this computation is delayed after the routing decision, see INetfilter hook
             udpHeader->setCrc(0x0000); // make sure that the CRC is 0 in the Udp header before computing the CRC
-            auto udpData = packet->peekData();
+            Ptr<const Chunk> udpData = EmptyChunk::singleton;
+            if (udpHeader->getTotalLengthField() > udpHeader->getChunkLength())
+                udpData = packet->peekDataAt(b(0), udpHeader->getTotalLengthField() - udpHeader->getChunkLength());
             auto crc = computeCrc(networkProtocol, srcAddress, destAddress, udpHeader, udpData);
             udpHeader->setCrc(crc);
             break;
@@ -1351,7 +1374,8 @@ uint16_t Udp::computeCrc(const Protocol *networkProtocol, const L3Address& srcAd
     MemoryOutputStream stream;
     Chunk::serialize(stream, pseudoHeader);
     Chunk::serialize(stream, udpHeader);
-    Chunk::serialize(stream, udpData);
+    if (udpData->getChunkLength() > b(0))
+        Chunk::serialize(stream, udpData);
     uint16_t crc = TcpIpChecksum::checksum(stream.getData());
 
     // Excerpt from RFC 768:
