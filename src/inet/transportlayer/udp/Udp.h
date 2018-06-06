@@ -98,6 +98,8 @@ class INET_API Udp : public cSimpleModule, public ILifecycle
         bool multicastLoop = DEFAULT_MULTICAST_LOOP;
         int ttl = -1;
         unsigned char typeOfService = 0;
+        B udpliteSendCsCov = B(0);
+        B udpliteRecvCsCov = B(0);
         MulticastMembershipTable multicastMembershipTable;
 
         MulticastMembershipTable::iterator findFirstMulticastMembership(const L3Address& multicastAddress);
@@ -113,6 +115,7 @@ class INET_API Udp : public cSimpleModule, public ILifecycle
   protected:
     CrcMode crcMode = static_cast<CrcMode>(-1);
     CrcInsertion crcInsertion;
+    bool udpLiteMode = false;
 
     // sockets
     SocketsByIdMap socketsByIdMap;

@@ -44,6 +44,8 @@ void UdpProtocolDissector::dissect(Packet *packet, ICallback& callback) const
     ASSERT(packet->getDataLength() == B(0));
     packet->setFrontOffset(udpPayloadEndOffset);
     packet->setBackOffset(originalTrailerPopOffset);
+    if (packet->getDataLength() > B(0))
+        callback.dissectPacket(packet, nullptr);        // padding
     callback.endProtocolDataUnit(&Protocol::udp);
 }
 

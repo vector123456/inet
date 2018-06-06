@@ -175,13 +175,14 @@ void Udp::initialize(int stage)
         NodeStatus *nodeStatus = dynamic_cast<NodeStatus *>(findContainingNode(this)->getSubmodule("status"));
         isOperational = (!nodeStatus) || nodeStatus->getState() == NodeStatus::UP;
 
-#ifdef UDPLite
-        registerService(Protocol::udpLite, gate("appIn"), gate("ipIn"));
-        registerProtocol(Protocol::udpLite, gate("ipOut"), gate("appOut"));
-#else
-        registerService(Protocol::udp, gate("appIn"), gate("ipIn"));
-        registerProtocol(Protocol::udp, gate("ipOut"), gate("appOut"));
-#endif
+        if (udpLiteMode) {
+            registerService(Protocol::udpLite, gate("appIn"), gate("ipIn"));
+            registerProtocol(Protocol::udpLite, gate("ipOut"), gate("appOut"));
+        }
+        else {
+            registerService(Protocol::udp, gate("appIn"), gate("ipIn"));
+            registerProtocol(Protocol::udp, gate("ipOut"), gate("appOut"));
+        }
     }
 }
 
@@ -392,11 +393,12 @@ void Udp::processPacketFromApp(Packet *packet)
     // set source and destination port
     udpHeader->setSourcePort(srcPort);
     udpHeader->setDestinationPort(destPort);
-#ifdef UDPLite
-    udpHeader->setTotalLengthField( ??? );      //FIXME
-#else
-    udpHeader->setTotalLengthField(udpHeader->getChunkLength() + packet->getTotalLength());
-#endif
+
+    if (udpLiteMode && sd->udpliteSendCsCov != B(0))
+        udpHeader->setTotalLengthField(sd->udpliteSendCsCov);      //FIXME
+    else
+        udpHeader->setTotalLengthField(udpHeader->getChunkLength() + packet->getTotalLength());
+
     insertCrc(l3Protocol, srcAddr, destAddr, udpHeader, packet);    // crcMode == CRC_COMPUTED is done in an INetfilter hook
     insertTransportProtocolHeader(packet, Protocol::udp, udpHeader);
     packet->addTagIfAbsent<DispatchProtocolReq>()->setProtocol(l3Protocol);
@@ -427,11 +429,11 @@ void Udp::processUDPPacket(Packet *udpPacket)
     auto srcAddr = l3AddressInd->getSrcAddress();
     auto destAddr = l3AddressInd->getDestAddress();
     auto totalLength = B(udpHeader->getTotalLengthField());
-#ifdef UDPLite
-    if (totalLength == b(0))
-        totalLength = udpHeader->getChunkLength() + udpPacket->getDataLength();         // jumbo frame, see RFC 3828, 3.5.
-#endif
-    auto hasIncorrectLength = totalLength < udpHeader->getChunkLength() || totalLength > udpHeader->getChunkLength() + udpPacket->getDataLength();
+    if (udpLiteMode) {
+        if (totalLength == b(0))
+            totalLength = udpHeader->getChunkLength() + udpPacket->getDataLength();         // jumbo frame, see RFC 3828, 3.5.
+    }
+    bool hasIncorrectLength = totalLength < udpHeader->getChunkLength() || totalLength > udpHeader->getChunkLength() + udpPacket->getDataLength();
     auto networkProtocol = udpPacket->getTag<NetworkProtocolInd>()->getProtocol();
 
     if (hasIncorrectLength || !verifyCrc(networkProtocol, udpHeader, udpPacket)) {
@@ -443,14 +445,11 @@ void Udp::processUDPPacket(Packet *udpPacket)
         delete udpPacket;
         return;
     }
-#if 0
-#ifndef UDPLite
+
     // remove lower layer paddings:
-    if (totalLength < udpPacket->getDataLength()) {
+    if (!udpLiteMode && totalLength < udpPacket->getDataLength()) {
         udpPacket->setBackOffset(udpHeaderPopPosition + totalLength);
     }
-#endif
-#endif
 
     bool isMulticast = destAddr.isMulticast();
     bool isBroadcast = destAddr.isBroadcast();
@@ -464,6 +463,15 @@ void Udp::processUDPPacket(Packet *udpPacket)
             return;
         }
         else {
+            if (udpLiteMode && sd->udpliteRecvCsCov != B(0) && sd->udpliteRecvCsCov > totalLength) {
+                EV_WARN << "Packet udpliteRecvCsCov field too small, discarding\n";
+                PacketDropDetails details;
+                details.setReason(INCORRECTLY_RECEIVED);
+                emit(packetDroppedSignal, udpPacket, &details);
+                numDroppedBadChecksum++;
+                delete udpPacket;
+                return;
+            }
             sendUp(udpHeader, udpPacket, sd, srcPort, destPort);
         }
     }
@@ -477,10 +485,15 @@ void Udp::processUDPPacket(Packet *udpPacket)
             return;
         }
         else {
-            unsigned int i;
-            for (i = 0; i < sds.size() - 1; i++) // sds.size() >= 1
-                sendUp(udpHeader, udpPacket->dup(), sds[i], srcPort, destPort); // dup() to all but the last one
-            sendUp(udpHeader, udpPacket, sds[i], srcPort, destPort);    // send original to last socket
+            for (auto sd: sds) {
+                if (udpLiteMode && sd->udpliteRecvCsCov != B(0) && sd->udpliteRecvCsCov > totalLength) {
+                    EV_WARN << "Packet udpliteRecvCsCov field too small for multicast socket " << sd->sockId << ", discarding\n";
+                }
+                else {
+                    sendUp(udpHeader, udpPacket->dup(), sd, srcPort, destPort); // dup() to all but the last one
+                }
+            }
+            delete udpPacket;    // drop original
         }
     }
 }
