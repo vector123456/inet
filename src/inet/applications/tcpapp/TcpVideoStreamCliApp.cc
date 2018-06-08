@@ -109,7 +109,7 @@ void TcpVideoStreamCliApp::sendRequest() {
     const auto& payload = makeShared<GenericAppMsg>();
     Packet *packet = new Packet("data");
     payload->setChunkLength(B(requestLength));
-    payload->setExpectedReplyLength(replyLength);
+    payload->setExpectedReplyLength(B(replyLength));
     payload->setServerClose(false);
     packet->insertAtBack(payload);
     sendPacket(packet);
@@ -164,16 +164,15 @@ void TcpVideoStreamCliApp::handleTimer(cMessage *msg) {
     }
 }
 
-void TcpVideoStreamCliApp::socketEstablished(int connId, void *ptr) {
-    TcpBasicClientApp::socketEstablished(connId, ptr);
+void TcpVideoStreamCliApp::socketEstablished(TcpSocket *socket) {
+    TcpBasicClientApp::socketEstablished(socket);
 
     // perform first request
     sendRequest();
 
 }
 
-void TcpVideoStreamCliApp::rescheduleOrDeleteTimer(simtime_t d,
-        short int msgKind) {
+void TcpVideoStreamCliApp::rescheduleOrDeleteTimer(simtime_t d, short int msgKind) {
     cancelEvent (timeoutMsg);
 
     if (stopTime == 0 || stopTime > d) {
@@ -185,9 +184,9 @@ void TcpVideoStreamCliApp::rescheduleOrDeleteTimer(simtime_t d,
     }
 }
 
-void TcpVideoStreamCliApp::socketDataArrived(int connId, void *ptr, Packet *msg,
-        bool urgent) {
-    TcpAppBase::socketDataArrived(connId, ptr, msg, urgent);
+void TcpVideoStreamCliApp::socketDataArrived(TcpSocket *socket, Packet *msg, bool urgent)
+{
+    TcpAppBase::socketDataArrived(socket, msg, urgent);
 
     if (!manifestAlreadySent) {
         manifestAlreadySent = true;
@@ -271,14 +270,14 @@ void TcpVideoStreamCliApp::socketDataArrived(int connId, void *ptr, Packet *msg,
     }
 }
 
-void TcpVideoStreamCliApp::socketClosed(int connId, void *ptr) {
-    TcpBasicClientApp::socketClosed(connId, ptr);
+void TcpVideoStreamCliApp::socketClosed(TcpSocket *socket) {
+    TcpBasicClientApp::socketClosed(socket);
 
     // Nothing to do here...
 }
 
-void TcpVideoStreamCliApp::socketFailure(int connId, void *ptr, int code) {
-    TcpBasicClientApp::socketFailure(connId, ptr, code);
+void TcpVideoStreamCliApp::socketFailure(TcpSocket *socket, int code) {
+    TcpBasicClientApp::socketFailure(socket, code);
 
     // reconnect after a delay
     if (timeoutMsg) {

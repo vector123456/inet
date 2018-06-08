@@ -15,20 +15,11 @@
 
 package inet.examples.wireless.video.videoStreaming.simulations;
 
-import inet.common.lifecycle.LifecycleController;
-import inet.common.scenario.ScenarioManager;
-import inet.networklayer.configurator.ipv4.Ipv4FlatNetworkConfigurator;
-import inet.networklayer.configurator.ipv4.Ipv4NetworkConfigurator;
-import inet.networklayer.ipv4.RoutingTableRecorder;
-import inet.node.aodv.AodvRouter;
-import inet.physicallayer.common.packetlevel.RadioMedium;
-import inet.physicallayer.unitdisk.UnitDiskRadioMedium;
-import inet.node.inet.INetworkNode;
-
 import inet.environment.common.PhysicalEnvironment;
+import inet.networklayer.configurator.ipv4.Ipv4NetworkConfigurator;
+import inet.node.inet.INetworkNode;
 import inet.physicallayer.contract.packetlevel.IRadioMedium;
 import inet.visualizer.contract.IIntegratedVisualizer;
-import inet.applications.contract.IApp;
 
 
 //

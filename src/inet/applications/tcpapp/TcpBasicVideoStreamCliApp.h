@@ -50,11 +50,11 @@ protected:
     simtime_t stopTime;
 
     /** Utility: sends a request to the server */
-    virtual void sendRequest();
+    virtual void sendRequest() override;
 
     /** Utility: cancel msgTimer and if d is smaller than stopTime, then schedule it to d,
      * otherwise delete msgTimer */
-    virtual void rescheduleOrDeleteTimer(simtime_t d, short int msgKind);
+    virtual void rescheduleOrDeleteTimer(simtime_t d, short int msgKind) override;
 
 public:
     TcpBasicVideoStreamCliApp() {}
@@ -62,30 +62,26 @@ public:
 
 protected:
     /** Redefined . */
-    virtual void initialize(int stage);
+    virtual void initialize(int stage) override;
 
     /** Redefined. */
-    virtual void handleTimer(cMessage *msg);
+    virtual void handleTimer(cMessage *msg) override;
 
     /** Redefined. */
-    virtual void socketEstablished(int connId, void *yourPtr);
+    virtual void socketEstablished(TcpSocket *socket) override;
 
     /** Redefined. */
-    virtual void socketDataArrived(int connId, void *yourPtr, Packet *msg,
-            bool urgent);
+    virtual void socketDataArrived(TcpSocket *socket, Packet *msg, bool urgent) override;
 
     /** Redefined to start another session after a delay (currently not used). */
-    virtual void socketClosed(int connId, void *yourPtr);
+    virtual void socketClosed(TcpSocket *socket) override;
 
     /** Redefined to reconnect after a delay. */
-    virtual void socketFailure(int connId, void *yourPtr, int code);
+    virtual void socketFailure(TcpSocket *socket, int code) override;
 
     virtual void refreshDisplay() const override;
-
 };
+
 } //namespace inet
 #endif
-
-
-
 

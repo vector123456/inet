@@ -96,7 +96,7 @@ void TcpBasicVideoStreamCliApp::sendRequest()
     const auto& payload = makeShared<GenericAppMsg>();
     Packet *packet = new Packet("data");
     payload->setChunkLength(B(requestLength));
-    payload->setExpectedReplyLength(replyLength);
+    payload->setExpectedReplyLength(B(replyLength));
     payload->setServerClose(false);
     packet->insertAtBack(payload);
 
@@ -128,8 +128,9 @@ void TcpBasicVideoStreamCliApp::handleTimer(cMessage *msg) {
     }
 }
 
-void TcpBasicVideoStreamCliApp::socketEstablished(int connId, void *ptr) {
-    TcpBasicClientApp::socketEstablished(connId, ptr);
+void TcpBasicVideoStreamCliApp::socketEstablished(TcpSocket *socket)
+{
+    TcpBasicClientApp::socketEstablished(socket);
 
     // perform first request
     sendRequest();
@@ -149,10 +150,10 @@ void TcpBasicVideoStreamCliApp::rescheduleOrDeleteTimer(simtime_t d,
     }
 }
 
-void TcpBasicVideoStreamCliApp::socketDataArrived(int connId, void *ptr, Packet *msg, bool urgent) {
-    //TcpBasicClientApp::socketDataArrived(connId, ptr, msg, urgent);
+void TcpBasicVideoStreamCliApp::socketDataArrived(TcpSocket *socket, Packet *msg, bool urgent) {
+    //TcpBasicClientApp::socketDataArrived(socket, msg, urgent);
 
-    TcpAppBase::socketDataArrived(connId, ptr, msg, urgent);
+    TcpAppBase::socketDataArrived(socket, msg, urgent);
 
 
     if (!manifestAlreadySent) {
@@ -208,14 +209,14 @@ void TcpBasicVideoStreamCliApp::socketDataArrived(int connId, void *ptr, Packet 
     }
 }
 
-void TcpBasicVideoStreamCliApp::socketClosed(int connId, void *ptr) {
-    TcpBasicClientApp::socketClosed(connId, ptr);
+void TcpBasicVideoStreamCliApp::socketClosed(TcpSocket *socket) {
+    TcpBasicClientApp::socketClosed(socket);
 
     // Nothing to do here...
 }
 
-void TcpBasicVideoStreamCliApp::socketFailure(int connId, void *ptr, int code) {
-    TcpBasicClientApp::socketFailure(connId, ptr, code);
+void TcpBasicVideoStreamCliApp::socketFailure(TcpSocket *socket, int code) {
+    TcpBasicClientApp::socketFailure(socket, code);
 
 }
 
