@@ -1,0 +1,7 @@
+This folder contains many reusable modules for the purpose of traffic generation
+in applications, and packet queueing, traffic shaping, and traffic policing in
+network devices and communication protocols.
+
+The available different kind of modules can be combined in many ways to create
+desired complex behavior for the above purposes. In general, to avoid unexpected
+runtime errors, modules validate the assembled structure during module initialization.
