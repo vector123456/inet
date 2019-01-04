@@ -1,0 +1,77 @@
+%description:
+
+TODO
+
+%file: test.ned
+
+import inet.common.newqueue.PriorityBuffer;
+import inet.common.newqueue.PacketClassifier;
+import inet.common.newqueue.PacketQueue;
+import inet.common.newqueue.PacketCollector;
+import inet.common.newqueue.PacketProducer;
+import inet.common.newqueue.PriorityScheduler;
+import inet.common.newqueue.RedDropper;
+
+network TestRedDropper
+{
+    submodules:
+        producer: PacketProducer {
+            @display("p=100,100");
+        }
+        classifier: PacketClassifier {
+            @display("p=200,100");
+        }
+        dropper: RedDropper {
+            @display("p=300,100");
+        }
+        queue1: PacketQueue {
+            @display("p=400,100");
+        }
+        queue2: PacketQueue {
+            @display("p=400,200");
+        }
+        scheduler: PriorityScheduler {
+            @display("p=500,100");
+        }
+        collector: PacketCollector {
+            @display("p=600,100");
+        }
+    connections:
+        producer.out --> classifier.in;
+    	classifier.out++ --> dropper.in++;
+    	classifier.out++ --> dropper.in++;
+    	dropper.out++ --> queue1.in;
+    	dropper.out++ --> queue2.in;
+    	queue1.out --> scheduler.in++;
+    	queue2.out --> scheduler.in++;
+    	scheduler.out --> collector.in;
+}
+
+%file: Test.cc
+#include <vector>
+#include "inet/common/newqueue/PacketClassifierFunction.h"
+#include "inet/common/packet/Packet.h"
+
+using namespace inet; 
+
+static int testClassify(Packet *packet)
+{
+    return packet->getId() % 2;
+}
+
+Register_Packet_Classifier_Function(TestClassifier, testClassify);
+
+%inifile: omnetpp.ini
+
+[General]
+network = TestRedDropper
+sim-time-limit = 10s
+cmdenv-event-banners = false
+*.producer.packetLength = 1B
+*.producer.productionInterval = uniform(0s, 1s)
+*.dropper.numGates = 2
+*.collector.collectionInterval = uniform(0s, 2s)
+*.classifier.classifierClass = "TestClassifier"
+
+%contains: stdout
+xxx
