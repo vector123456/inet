@@ -48,19 +48,18 @@ void TokenBucketMeter::initialize(int stage)
     }
 }
 
-void TokenBucketMeter::handleMessage(cMessage *msg)
+void TokenBucketMeter::pushPacket(Packet *packet, cGate *inputGate)
 {
-    cPacket *packet = check_and_cast<cPacket *>(msg);
-
     numRcvd++;
-    int color = meterPacket(packet);
-    if (color == GREEN) {
-        send(packet, "greenOut");
-    }
+    cGate *outputGate = nullptr;
+    int color = classifyPacket(packet);
+    if (color == GREEN)
+        outputGate = gate("greenOut");
     else {
         numRed++;
-        send(packet, "redOut");
+        outputGate = gate("redOut");
     }
+    pushOrSendPacket(packet, outputGate);
 }
 
 void TokenBucketMeter::refreshDisplay() const
@@ -73,7 +72,7 @@ void TokenBucketMeter::refreshDisplay() const
     getDisplayString().setTagArg("t", 0, buf);
 }
 
-int TokenBucketMeter::meterPacket(cPacket *packet)
+int TokenBucketMeter::classifyPacket(Packet *packet)
 {
     // update token buckets
     simtime_t currentTime = simTime();

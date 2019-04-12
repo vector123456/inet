@@ -52,18 +52,17 @@ void DscpMarker::initialize()
     WATCH(numMarked);
 }
 
-void DscpMarker::handleMessage(cMessage *msg)
+void DscpMarker::pushPacket(Packet *packet, cGate *inputGate)
 {
-    Packet *packet = check_and_cast<Packet *>(msg);
     numRcvd++;
-    int dscp = dscps.at(msg->getArrivalGate()->getIndex());
+    int dscp = dscps.at(inputGate->getIndex());
     if (markPacket(packet, dscp)) {
         emit(packetMarkedSignal, packet);
         numMarked++;
     }
-
-    send(packet, "out");
+    pushOrSendPacket(packet, gate("out"));
 }
+
 void DscpMarker::refreshDisplay() const
 {
     char buf[50] = "";

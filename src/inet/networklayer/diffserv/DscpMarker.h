@@ -19,6 +19,9 @@
 #define __INET_DSCPMARKER_H
 
 #include "inet/common/INETDefs.h"
+#include "inet/common/newqueue/base/PacketConsumerBase.h"
+#include "inet/common/newqueue/contract/IPacketProducer.h"
+#include "inet/common/newqueue/contract/IPacketQueueingElement.h"
 #include "inet/common/packet/Packet.h"
 
 namespace inet {
@@ -26,7 +29,7 @@ namespace inet {
 /**
  * DSCP Marker.
  */
-class INET_API DscpMarker : public cSimpleModule
+class INET_API DscpMarker : public queue::PacketConsumerBase, public queue::IPacketProducer, public queue::IPacketQueueingElement
 {
   protected:
     std::vector<int> dscps;
@@ -39,9 +42,15 @@ class INET_API DscpMarker : public cSimpleModule
   public:
     DscpMarker() {}
 
+    virtual bool supportsPushPacket(cGate *gate) override { return true; }
+    virtual bool supportsPopPacket(cGate *gate) override { return false; }
+
+    virtual queue::IPacketConsumer *getConsumer(cGate *gate) override { return this; }
+    virtual void handleCanPushPacket(cGate *gate) override { }
+
   protected:
     virtual void initialize() override;
-    virtual void handleMessage(cMessage *msg) override;
+    virtual void pushPacket(Packet *packet, cGate *gate = nullptr) override;
     virtual void refreshDisplay() const override;
 
     virtual bool markPacket(Packet *msg, int dscp);

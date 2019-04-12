@@ -39,7 +39,7 @@ simple MultiFieldClassifier
         @statistic[pkClass](title="packet class"; source=pkClass; record=vector; interpolationmode=none);
     gates:
         input in;
-        output outs[];
+        output out[];
         output defaultOut;
 }
 

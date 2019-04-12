@@ -52,27 +52,27 @@ void SingleRateThreeColorMeter::initialize(int stage)
     }
 }
 
-void SingleRateThreeColorMeter::handleMessage(cMessage *msg)
+void SingleRateThreeColorMeter::pushPacket(Packet *packet, cGate *inputGate)
 {
-    cPacket *packet = check_and_cast<cPacket *>(msg);
-
     numRcvd++;
-    int color = meterPacket(packet);
+    cGate *outputGate = nullptr;
+    int color = classifyPacket(packet);
     switch (color) {
         case GREEN:
-            send(packet, "greenOut");
+            outputGate = gate("greenOut");
             break;
 
         case YELLOW:
             numYellow++;
-            send(packet, "yellowOut");
+            outputGate = gate("yellowOut");
             break;
 
         case RED:
             numRed++;
-            send(packet, "redOut");
+            outputGate = gate("redOut");
             break;
     }
+    pushOrSendPacket(packet, outputGate);
 }
 
 void SingleRateThreeColorMeter::refreshDisplay() const
@@ -87,7 +87,7 @@ void SingleRateThreeColorMeter::refreshDisplay() const
     getDisplayString().setTagArg("t", 0, buf);
 }
 
-int SingleRateThreeColorMeter::meterPacket(cPacket *packet)
+int SingleRateThreeColorMeter::classifyPacket(Packet *packet)
 {
     // update token buckets
     simtime_t currentTime = simTime();
