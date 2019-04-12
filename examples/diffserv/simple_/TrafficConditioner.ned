@@ -19,15 +19,14 @@
 
 package inet.examples.diffserv.simple_;
 
-import inet.common.queue.Join;
-import inet.common.queue.Sink;
+import inet.common.newqueue.PacketConsumer;
+import inet.common.newqueue.PacketMultiplexer;
 import inet.linklayer.contract.ITrafficConditioner;
 import inet.networklayer.diffserv.BehaviorAggregateClassifier;
 import inet.networklayer.diffserv.DscpMarker;
 import inet.networklayer.diffserv.MultiFieldClassifier;
 import inet.networklayer.diffserv.SingleRateThreeColorMeter;
 import inet.networklayer.diffserv.TokenBucketMeter;
-
 
 //
 // TODO documentation
@@ -72,7 +71,7 @@ module TrafficConditioner like ITrafficConditioner
             dscps = "AF23";
             @display("p=700,450");
         }
-        join: Join {
+        join: PacketMultiplexer {
             @display("p=850,250");
         }
         beMarker: DscpMarker {
@@ -87,14 +86,14 @@ module TrafficConditioner like ITrafficConditioner
             dscps = "AF11";
             @display("p=550,100");
         }
-        dropper: Sink {
+        dropper: PacketConsumer {
             @display("p=550,450");
         }
     connections:
         in --> mfClassifier.in;
-        mfClassifier.outs++ --> efMarker.in++;
-        mfClassifier.outs++ --> af11Marker.in++;
-        mfClassifier.outs++ --> af21Marker.in++;
+        mfClassifier.out++ --> efMarker.in++;
+        mfClassifier.out++ --> af11Marker.in++;
+        mfClassifier.out++ --> af21Marker.in++;
         mfClassifier.defaultOut --> beMarker.in++;
         efMarker.out --> efMeter.in++;
         efMeter.greenOut --> { @display("ls=green"); } --> join.in++;
@@ -105,12 +104,12 @@ module TrafficConditioner like ITrafficConditioner
         beMarker.out --> defaultMeter.in++;
         defaultMeter.greenOut --> { @display("ls=green"); } --> join.in++;
         defaultMeter.yellowOut --> { @display("ls=yellow"); } --> baClassifier.in;
-        baClassifier.outs++ --> af13Marker.in++;
-        baClassifier.outs++ --> af23Marker.in++;
+        baClassifier.out++ --> af13Marker.in++;
+        baClassifier.out++ --> af23Marker.in++;
         baClassifier.defaultOut --> join.in++;
         af13Marker.out --> join.in++;
         af23Marker.out --> join.in++;
         join.out --> out;
-        defaultMeter.redOut --> { @display("ls=red"); } --> dropper.in++;
+        defaultMeter.redOut --> { @display("ls=red"); } --> dropper.in;
 }
 
