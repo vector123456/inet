@@ -527,7 +527,8 @@ void EtherMac::startFrameTransmission()
     bool inBurst = frameBursting && framesSentInBurst;
     B minFrameLength = duplexMode ? curEtherDescr->frameMinBytes : (inBurst ? curEtherDescr->frameInBurstMinBytes : curEtherDescr->halfDuplexFrameMinBytes);
 
-    EtherEncap::addPaddingAndFcs(frame, fcsMode, minFrameLength);
+    B kludgeBytes = (minFrameLength > MIN_ETHERNET_FRAME_BYTES) ? B(0) : (hdr->getCTag() ? B(4) : B(0)) + (hdr->getSTag() ? B(4) : B(0));
+    EtherEncap::addPaddingAndFcs(frame, fcsMode, minFrameLength + kludgeBytes);
 
     // add preamble and SFD (Starting Frame Delimiter), then send out
     encapsulate(frame);
